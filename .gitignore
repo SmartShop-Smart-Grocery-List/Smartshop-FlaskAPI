@@ -1,0 +1,9 @@
+*.zip
+Data/
+Food/
+instance/
+Model/
+.ipynb_checkpoints/
+*.log
+*.csv
+__pycache__/
