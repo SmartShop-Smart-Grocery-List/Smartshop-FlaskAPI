@@ -1,6 +1,7 @@
 *.zip
 Data/
 Food/
+Gym/
 instance/
 Model/
 .ipynb_checkpoints/

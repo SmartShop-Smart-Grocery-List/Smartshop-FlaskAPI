@@ -10,3 +10,7 @@ print(response.json())
 
 # response = requests.get(BASE + "recommend", {'username': "Bob"})
 # print(response.json())
+
+from main import read_recipe_ratings
+
+print(read_recipe_ratings().head())

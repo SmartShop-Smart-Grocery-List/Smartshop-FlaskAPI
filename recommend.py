@@ -1,13 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
-import itertools
-import ast
-import pickle
-
-recipes = pd.read_csv("Data/Recipes.csv")
-user_interactions = pd.read_csv("Data/Interactions.csv")
-recipe_ratings = pd.read_csv("Data/Recipe_Bayesian_Ratings.csv")
 
 DVP_HIGH = 40.0
 DVP_MED = 25.0
@@ -26,7 +17,7 @@ def parse_pdv(dvp, multiplier):
             high = DVP_MED * multiplier
     return low, high
 
-def getRecipesWithConfiguration(calories=None, daily=2000, fat="NULL", sat_fat="NULL", sugar="NULL", sodium="NULL", protein="NULL", carbs="NULL", tags=[]):
+def getRecipesWithConfiguration(recipes, user_id, colab_filter=None, calories=None, daily=2000, fat="NULL", sat_fat="NULL", sugar="NULL", sodium="NULL", protein="NULL", carbs="NULL", tags=[]):
     
     high_calorie_lim = float("inf")
     low_calorie_lim = 0
@@ -63,7 +54,18 @@ def getRecipesWithConfiguration(calories=None, daily=2000, fat="NULL", sat_fat="
         recipes_filter = recipes_filter & tags_filter
     
     recipes_found = recipes[recipes_filter]
+    recipes_found_sorted = recipes_found.sort_values(by='bayesian_avg', ascending=False)
 
-    
+    if colab_filter:
+        recipe_ids = recipes_found['id'].tolist()
+        weighted_predictions = []
+        for recipe_id in recipe_ids:
+            bayesian_avg = recipes_found[recipes_found['id'] == recipe_id]['bayesian_avg'].values[0]
+            colab_prediction = colab_filter.predict(user_id, recipe_id)
+            weighted_prediction = (bayesian_avg + colab_prediction) / 2
+            weighted_predictions.append((recipe_id, weighted_prediction))
+        predictions_sorted = sorted(weighted_predictions, key=lambda x: x[1], reverse=True)
+        sorted_recipe_ids = [pred[0] for pred in predictions_sorted]
+        recipes_found_sorted = recipes_found_sorted[recipes_found_sorted['id'].isin(sorted_recipe_ids)]
 
-    return recipes_found
+    return recipes_found_sorted

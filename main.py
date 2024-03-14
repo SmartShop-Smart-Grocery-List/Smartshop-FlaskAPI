@@ -3,6 +3,9 @@ from flask_restful import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from recommend import getRecipesWithConfiguration
+import data_management
+import pandas as pd
+from sqlalchemy import create_engine
 
 app = Flask(__name__)
 api = Api(app)
@@ -10,12 +13,13 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///default.db'
 app.config['SQLALCHEMY_BINDS'] = {
     'users': 'sqlite:///user_database.db',
-    'ratings': 'sqlite:///ratings_database.db'
+    'recipe_ratings': 'sqlite:///recipe_ratings_database.db'
 }
 db = SQLAlchemy(app)
 
 class DBUsers(db.Model):
     __bind_key__ = 'users'
+    __tablename__ = 'users'
     user_id = db.Column(db.Integer, primary_key=True, nullable=False)
     username = db.Column(db.String(128), nullable=False)
     current_daily_calories = db.Column(db.Integer)
@@ -35,8 +39,9 @@ class DBUsers(db.Model):
                 Weight = {self.weight}, Gender = {self.gender}, Current Level of Activity = {self.current_level_of_activity}, 
                 Goal Level of Activity = {self.goal_level_of_activity}, Weight Goal = {self.weight_goal})"""
 
-class DBRatings(db.Model):
-    __bind_key__ = 'ratings'
+class DBRecipeRatings(db.Model):
+    __bind_key__ = 'recipe_ratings'
+    __tablename__ = 'recipe_ratings'
     user_id = db.Column(db.Integer, primary_key=True, nullable=False)
     recipe_id = db.Column(db.Integer, nullable=False)
     rating = db.Column(db.Integer, nullable=False)
@@ -273,11 +278,18 @@ class Recipe(Resource):
         if not user:
             abort(404, {'error': 'User not found'})
 
-        resp = getRecipesWithConfiguration(calories=args['calories'], daily=user.goal_daily_calories,
-                                           fat=args['fat'], sat_fat=args['sat_fat'],
+        if data_management.data.is_user_in_filter(user.user_id):
+            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, colab_filter=data_management.data.recipe_colab_filter,
+                                           calories=args['calories'], daily=user.goal_daily_calories,
+                                           fat=args['fat'], sat_fat=args['sat fat'],
                                            sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
                                            carbs=args['carbs'], tags=args['tags'])
-        
+        else:
+            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, colab_filter=None,
+                                calories=args['calories'], daily=user.goal_daily_calories,
+                                fat=args['fat'], sat_fat=args['sat fat'],
+                                sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
+                                carbs=args['carbs'], tags=args['tags'])
         return resp[:5].to_dict()
     
     def put(self):
@@ -290,7 +302,7 @@ class Recipe(Resource):
         if args['rating'] in [0, 1, 2, 3, 4, 5]:
             abort(400, {'error': 'Rating not integer in range [0, 5]'})
         
-        new_rating = DBRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
+        new_rating = DBRecipeRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
         db.session.add(new_rating)
         db.session.commit()
         
@@ -410,7 +422,8 @@ class Excercise(Resource):
         if not user:
             abort(404, {'error': 'User not found'})
 
-        resp = getRecipesWithConfiguration(calories=args['calories'], daily=user.goal_daily_calories,
+        resp = getRecipesWithConfiguration(data_management.data.recipes, data_management.data.recipe_colab_filter,
+                                           calories=args['calories'], daily=user.goal_daily_calories,
                                            fat=args['fat'], sat_fat=args['sat fat'],
                                            sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
                                            carbs=args['carbs'], tags=args['tags'])
@@ -427,12 +440,11 @@ class Excercise(Resource):
         if args['rating'] in [0, 1, 2, 3, 4, 5]:
             abort(400, {'error': 'Rating not integer in range [0, 5]'})
         
-        new_rating = DBRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
+        new_rating = DBRecipeRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
         db.session.add(new_rating)
         db.session.commit()
         
         return {"data": {"username": args['username']}}, 201
-
     
 api.add_resource(Recipe, "/recommend/recipe")
 api.add_resource(DietRecommendation, "/recommend/diet")
@@ -441,4 +453,6 @@ api.add_resource(User, "/user")
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        data_management.data = data_management.DataManager()
+        data_management.data.setup_recipe_colab_filter()
     app.run(port=5000, debug=True)
