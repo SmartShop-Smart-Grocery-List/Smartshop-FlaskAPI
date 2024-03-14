@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 DVP_HIGH = 40.0
 DVP_MED = 25.0
@@ -17,7 +18,7 @@ def parse_pdv(dvp, multiplier):
             high = DVP_MED * multiplier
     return low, high
 
-def getRecipesWithConfiguration(recipes, user_id, colab_filter=None, calories=None, daily=2000, fat="NULL", sat_fat="NULL", sugar="NULL", sodium="NULL", protein="NULL", carbs="NULL", tags=[]):
+def getRecipesWithConfiguration(recipes, user_id, user_ratings_count, colab_filter=None, calories=None, daily=2000, fat="NULL", sat_fat="NULL", sugar="NULL", sodium="NULL", protein="NULL", carbs="NULL", tags=[]):
     
     high_calorie_lim = float("inf")
     low_calorie_lim = 0
@@ -62,10 +63,23 @@ def getRecipesWithConfiguration(recipes, user_id, colab_filter=None, calories=No
         for recipe_id in recipe_ids:
             bayesian_avg = recipes_found[recipes_found['id'] == recipe_id]['bayesian_avg'].values[0]
             colab_prediction = colab_filter.predict(user_id, recipe_id)
-            weighted_prediction = (bayesian_avg + colab_prediction) / 2
-            weighted_predictions.append((recipe_id, weighted_prediction))
+            
+            weighted_predictions.append((recipe_id, calculate_weighted_prediction(bayesian_avg, colab_prediction, user_ratings_count)))
         predictions_sorted = sorted(weighted_predictions, key=lambda x: x[1], reverse=True)
         sorted_recipe_ids = [pred[0] for pred in predictions_sorted]
-        recipes_found_sorted = recipes_found_sorted[recipes_found_sorted['id'].isin(sorted_recipe_ids)]
+        recipes_found_sorted = recipes_found_sorted.reindex(sorted_recipe_ids)
 
     return recipes_found_sorted
+
+def sigmoid(x, k=1, x0=0):
+    return 1 / (1 + np.exp(-k*(x-x0)))
+
+def calculate_weighted_prediction(bayesian_avg, colab_prediction, count_items_rated):
+    max_colab_weight = 0.95
+    min_colab_weight = 0.2
+    max_count = 100
+    
+    colab_weight = min_colab_weight + (max_colab_weight - min_colab_weight) * sigmoid(count_items_rated, k=0.1, x0=max_count/2)
+    
+    weighted_prediction = (bayesian_avg * (1 - colab_weight)) + (colab_prediction * colab_weight)    
+    return weighted_prediction

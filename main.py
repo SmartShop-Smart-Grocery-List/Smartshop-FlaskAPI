@@ -105,7 +105,7 @@ class User(Resource):
 
         global current_max_id
         if current_max_id is None:
-            current_max_id = db.session.query(db.func.max(DBUsers.user_id)).scalar() or 0
+            current_max_id = db.session.query(db.func.max(DBUsers.user_id)).scalar() or 60315
 
         new_user_data = {'user_id': current_max_id + 1, 'username': username}
 
@@ -279,13 +279,14 @@ class Recipe(Resource):
             abort(404, {'error': 'User not found'})
 
         if data_management.data.is_user_in_filter(user.user_id):
-            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, colab_filter=data_management.data.recipe_colab_filter,
+            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, (data_management.data.user_interactions['user_id'] == user.user_id).sum(),
+                                           colab_filter=data_management.data.recipe_colab_filter,
                                            calories=args['calories'], daily=user.goal_daily_calories,
                                            fat=args['fat'], sat_fat=args['sat fat'],
                                            sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
                                            carbs=args['carbs'], tags=args['tags'])
         else:
-            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, colab_filter=None,
+            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, 0, colab_filter=None,
                                 calories=args['calories'], daily=user.goal_daily_calories,
                                 fat=args['fat'], sat_fat=args['sat fat'],
                                 sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
