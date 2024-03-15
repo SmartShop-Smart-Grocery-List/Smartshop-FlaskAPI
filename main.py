@@ -47,8 +47,18 @@ class DBRecipeRatings(db.Model):
     rating = db.Column(db.Integer, nullable=False)
 
     def __repr__(self):
-        return f"Rating(User ID = {self.user_id}, RecipeID = {self.recipe_id}, Rating = {self.rating})"
-    
+        return f"RecipeRating(User ID = {self.user_id}, RecipeID = {self.recipe_id}, Rating = {self.rating})"
+
+class DBExerciseRatings(db.Model):
+    __bind_key__ = 'exercise_ratings'
+    __tablename__ = 'exercise_ratings'
+    user_id = db.Column(db.Integer, primary_key=True, nullable=False)
+    exercise_id = db.Column(db.Integer, nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+
+    def __repr__(self):
+        return f"ExerciseRating(User ID = {self.user_id}, RecipeID = {self.exercise_id}, Rating = {self.rating})"
+
 user_post_args = reqparse.RequestParser()
 user_post_args.add_argument('username', type=str, required=True, help='Username is required', location='form')
 user_post_args.add_argument('current_daily_calories', type=int, help='Enter the current daily calories for this user', location='form')
@@ -300,8 +310,11 @@ class Recipe(Resource):
         if not user:
             abort(404, {'error': 'User not found'})        
 
-        if args['rating'] in [0, 1, 2, 3, 4, 5]:
+        if not args['rating'] in [0, 1, 2, 3, 4, 5]:
             abort(400, {'error': 'Rating not integer in range [0, 5]'})
+        
+        if not args['recipe_id'] in data_management.data.recipes['id'].values:
+            abort(404, {'error': 'Invalid recipe_id'})
         
         new_rating = DBRecipeRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
         db.session.add(new_rating)
@@ -403,25 +416,27 @@ class DietRecommendation(Resource):
                 option['goal_level_of_activity'] = user.current_level_of_activity
                 recommendation_options['option_1'] = option
 
-excercise_get_args = reqparse.RequestParser()
-excercise_get_args.add_argument("username", type=str, help="Enter Username", location='args', required=True)
-excercise_get_args.add_argument("type", type=int, help="Number of calories of the food", location='args')
-excercise_get_args.add_argument("body_part", type=str, help="Total Fat (PDV): 'high' or 'mid' or 'low'", location='args')
-excercise_get_args.add_argument("equipment", type=str, help="Saturated Fat (PDV): 'high' or 'mid' or 'low'", location='args')
-excercise_get_args.add_argument("level", type=str, help="Sugar (PDV): 'high' or 'mid' or 'low'", location='args')
+exercise_get_args = reqparse.RequestParser()
+exercise_get_args.add_argument("username", type=str, help="Enter Username", location='args', required=True)
+exercise_get_args.add_argument("type", type=int, help="Enter the type of exercise", location='args')
+exercise_get_args.add_argument("body_part", type=str, help="Enter the main body part the exercise is for", location='args')
+exercise_get_args.add_argument("equipment", type=str, help="Enter the equipment used in the exercise", location='args')
+exercise_get_args.add_argument("level", type=str, help="Enter the difficulty level", location='args')
 
 recipe_put_args = reqparse.RequestParser()
 recipe_put_args.add_argument("username", type=str, help="Enter Username", location='args', required=True)
-recipe_put_args.add_argument("recipe_id", type=int, help="Enter the id of the recipe", location='args', required=True)
+recipe_put_args.add_argument("exercise_id", type=int, help="Enter the id of the exercise", location='args', required=True)
 recipe_put_args.add_argument("rating", type=int, help="Enter the rating, integer from 0 to 5 inclusive", location='args', required=True)
 
-class Excercise(Resource):
+class Exercise(Resource):
     def get(self):
         args = recipe_get_args.parse_args()
         user = DBUsers.query.filter_by(username=args['username']).first()
 
         if not user:
             abort(404, {'error': 'User not found'})
+        
+        
 
         resp = getRecipesWithConfiguration(data_management.data.recipes, data_management.data.recipe_colab_filter,
                                            calories=args['calories'], daily=user.goal_daily_calories,
@@ -436,18 +451,23 @@ class Excercise(Resource):
         user = DBUsers.query.filter_by(username=args['username']).first()
 
         if not user:
-            abort(404, {'error': 'User not found'})        
+            abort(404, {'error': 'User not found'})
 
-        if args['rating'] in [0, 1, 2, 3, 4, 5]:
+        if not args['rating'] in [0, 1, 2, 3, 4, 5]:
             abort(400, {'error': 'Rating not integer in range [0, 5]'})
+
+        # TODO
+        if not args['exercise_id'] in data_management.data.exercises['id'].values:
+            abort(404, {'error': 'Invalid recipe_id'})
         
-        new_rating = DBRecipeRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
+        new_rating = DBExerciseRatings(user_id=user.user_id, exercise_id=args['exercise_id'], rating=args['rating'])
         db.session.add(new_rating)
         db.session.commit()
         
         return {"data": {"username": args['username']}}, 201
     
 api.add_resource(Recipe, "/recommend/recipe")
+api.add_resource(Exercise, "/recommend/exercise")
 api.add_resource(DietRecommendation, "/recommend/diet")
 api.add_resource(User, "/user")
 

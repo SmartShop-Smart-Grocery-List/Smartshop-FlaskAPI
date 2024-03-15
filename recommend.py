@@ -71,6 +71,11 @@ def getRecipesWithConfiguration(recipes, user_id, user_ratings_count, colab_filt
 
     return recipes_found_sorted
 
+def getExerciseWithConfiguration(exercises, user_id, user_ratings_count, colab_filter=None, type=None, body_part=None, equipment=None, level=None):
+    raise NotImplementedError
+
+def 
+
 def sigmoid(x, k=1, x0=0):
     return 1 / (1 + np.exp(-k*(x-x0)))
 
