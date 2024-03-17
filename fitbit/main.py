@@ -6,7 +6,7 @@ import sqlite3
 import pandas as pd
 
 
-CLIENT_ID     = env.getClientID()
+CLIENT_ID  = env.getClientID()
 CLIENT_SECRET = env.getClientSecret()
 HOME = os.getcwd()
 
@@ -122,7 +122,7 @@ def mergeCSV():
             else:
                 df5 = pd.read_csv(old_files[index])
             
-            os.chdir('../..')
+            os.chdir('../../..')
             os.chdir(os.listdir(os.getcwd())[-1])
 
     merged = pd.concat([df1, df2, df3, df4, df5], axis=1)

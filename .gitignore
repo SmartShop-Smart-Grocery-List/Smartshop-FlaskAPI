@@ -3,7 +3,6 @@ Data/
 Food/
 Gym/
 instance/
-Model/
 .ipynb_checkpoints/
 *.log
 *.csv

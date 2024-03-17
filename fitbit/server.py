@@ -1,5 +1,5 @@
 from flask import Flask, request
-from src import main
+import main as main
 
 app = Flask(__name__)
     
@@ -16,6 +16,7 @@ def fetch_data():
         return 'Data fetched successfully!'
     except Exception as e:
         return f'Error fetching data: {str(e)}'
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
