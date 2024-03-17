@@ -8,3 +8,5 @@ Model/
 *.log
 *.csv
 __pycache__/
+.venv/
+.idea/

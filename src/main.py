@@ -2,10 +2,8 @@ from flask import Flask, abort
 from flask_restful import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from recommend import getRecipesWithConfiguration
-import data_management
-import pandas as pd
-from sqlalchemy import create_engine
+from src.recommender.recommend import getRecipesWithConfiguration
+from src.api import data_management
 
 app = Flask(__name__)
 api = Api(app)
@@ -289,18 +287,19 @@ class Recipe(Resource):
             abort(404, {'error': 'User not found'})
 
         if data_management.data.is_user_in_filter(user.user_id):
-            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, (data_management.data.user_interactions['user_id'] == user.user_id).sum(),
-                                           colab_filter=data_management.data.recipe_colab_filter,
-                                           calories=args['calories'], daily=user.goal_daily_calories,
-                                           fat=args['fat'], sat_fat=args['sat fat'],
-                                           sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
-                                           carbs=args['carbs'], tags=args['tags'])
+            resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, (
+                        data_management.data.user_interactions['user_id'] == user.user_id).sum(),
+                                               colab_filter=data_management.data.recipe_colab_filter,
+                                               calories=args['calories'], daily=user.goal_daily_calories,
+                                               fat=args['fat'], sat_fat=args['sat fat'],
+                                               sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
+                                               carbs=args['carbs'], tags=args['tags'])
         else:
             resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, 0, colab_filter=None,
-                                calories=args['calories'], daily=user.goal_daily_calories,
-                                fat=args['fat'], sat_fat=args['sat fat'],
-                                sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
-                                carbs=args['carbs'], tags=args['tags'])
+                                               calories=args['calories'], daily=user.goal_daily_calories,
+                                               fat=args['fat'], sat_fat=args['sat fat'],
+                                               sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
+                                               carbs=args['carbs'], tags=args['tags'])
         return resp[:5].to_dict()
     
     def put(self):
