@@ -1,16 +1,15 @@
 import pandas as pd
-from app.db.models import db
 from surprise import Dataset, Reader, SVD
-
+from flask import current_app as app
 
 data = None
 
 
 class DataManager:
     def __init__(self) -> None:
-        self.recipes = pd.merge(pd.read_csv("../data/Recipes.csv"), pd.read_csv("../data/Recipe_Bayesian_Ratings.csv"),
+        self.recipes = pd.merge(pd.read_csv("model/data/Recipes.csv"), pd.read_csv("model/data/Recipe_Bayesian_Ratings.csv"),
                                 how='left', left_on='id', right_on='id', suffixes=(False, False))
-        self.user_interactions = pd.concat([pd.read_csv("../data/Interactions.csv"),
+        self.user_interactions = pd.concat([pd.read_csv("model/data/Interactions.csv"),
                                             read_recipe_ratings_db().rename(columns={'recipe_id': 'id'}, inplace=True)],
                                            ignore_index=True)
         self.recipe_colab_filter = None
@@ -31,4 +30,4 @@ class DataManager:
 
 
 def read_recipe_ratings_db():
-    return pd.read_sql_table('recipe_ratings', con=db)
+    return pd.read_sql_table('recipe_ratings', con=app.config["SQLALCHEMY_DATABASE_URI"])

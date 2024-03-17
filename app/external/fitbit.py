@@ -1,14 +1,14 @@
 import fitbit
-import include.ENV as env
 import datetime
 import os
 import sqlite3
 import pandas as pd
+from flask import current_app
+from app.db.models import db, FitBit
 
-
-CLIENT_ID  = env.getClientID()
-CLIENT_SECRET = env.getClientSecret()
-HOME = os.getcwd()
+CLIENT_ID  = current_app.config["CLIENT_ID"]
+CLIENT_SECRET = current_app.config["CLIENT_SECRET"]
+HOME = os.path.join(os.getcwd())
 
 
 def authenticate(ACCESS_TOKEN, REFRESH_TOKEN):
@@ -159,54 +159,27 @@ def setup_database():
     # Close the database connection if it's open
     conn = None
     cursor = None
+
     try:
-        if ( os.path.exists(f'{HOME}/assets/data.mp4') ):
-            os.rename('data.mp4', 'data.db')
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
+        db.session.commit()
+        db.session.query(FitBit).delete()
+        db.session.commit()
 
-        cursor.execute('''CREATE TABLE IF NOT EXISTS data (
-                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       date TEXT,
-                       distance TEXT,
-                       steps TEXT,
-                       sleep TEXT,
-                       calories TEXT,
-                       restingHeartRate TEXT,
-                       maxHeartRate TEXT
-        )''')
-
-        cursor.execute('''DELETE FROM data''')
-
-        os.chdir(f'{HOME}/index')
+        os.chdir(f'{HOME}/model/data')
         dir = os.listdir( os.getcwd() )[-1]
         os.chdir(dir)
 
         df = pd.read_csv('health_data.csv', header=None)
         df.columns = ['date', 'distance', 'steps', 'sleep', 'calories', 'restingHeartRate', 'maxHeartRate']
+        df.to_sql(name='fitbit_data', con=db, if_exists='append', index=False)
+        db.session.commit()
 
-        for index, row in df.iterrows():
-            try:
-                cursor.execute('''INSERT INTO data (date, distance, steps, sleep, calories, restingHeartRate, maxHeartRate)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?)''', 
-                                (row['date'], row['distance'], row['steps'], row['sleep'], row['calories'], 
-                                row['restingHeartRate'], row['maxHeartRate']))
-            except KeyError as e:
-                print(f"Error: {e} - One or more column names are missing in the DataFrame.")
-                continue
-
-        conn.commit()
     except Exception as e:
         print(f"Error setting up database: {e}")
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+
 
     # Rename the file outside of the try-except-finally block
-    os.chdir(f'{HOME}/assets')
-    os.rename('data.db', 'data.mp4')
+    os.chdir(f'{HOME}/model/data')
 
 
 
