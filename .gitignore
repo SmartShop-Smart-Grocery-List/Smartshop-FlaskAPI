@@ -1,5 +1,6 @@
 *.zip
-Data/
+data/*
+!data/.gitkeep
 Food/
 Gym/
 instance/

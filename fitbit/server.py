@@ -13,7 +13,7 @@ def fetch_data():
     try: 
         main.archive_data()
         main.setup_database()
-        return 'Data fetched successfully!'
+        return 'data fetched successfully!'
     except Exception as e:
         return f'Error fetching data: {str(e)}'
 

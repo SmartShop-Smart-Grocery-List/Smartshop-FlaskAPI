@@ -4,6 +4,7 @@ from app.routes.users import User
 from app.routes.recipes import Recipe
 from app.routes.exercises import Exercise
 from app.routes.diets import DietRecommendation
+
 api = Api()
 
 api.add_resource(Recipe, "/recommend/recipes")

@@ -1,24 +1,21 @@
-from flask_restful import Resource, reqparse, fields
-from flask import Flask, abort
+from flask_restful import Resource, reqparse
+from flask import abort
 from app.db.models import User as DBUsers, ExerciseRating as DBExerciseRatings, db
-from app.model.recommendation.recommend import getExerciseWithConfiguration
-from app.model import data_management
-
 
 get_parser = reqparse.RequestParser()
 get_parser.add_argument("username", type=str, help="Enter Username", location='args', required=True)
 get_parser.add_argument("type", type=int, help="Enter the type of exercise", location='args')
 get_parser.add_argument("body_part", type=str, help="Enter the main body part the exercise is for",
-                               location='args')
+                        location='args')
 get_parser.add_argument("equipment", type=str, help="Enter the equipment used in the exercise", location='args')
 get_parser.add_argument("level", type=str, help="Enter the difficulty level", location='args')
 
 put_parser = reqparse.RequestParser()
 put_parser.add_argument("username", type=str, help="Enter Username", location='args', required=True)
 put_parser.add_argument("exercise_id", type=int, help="Enter the id of the exercise", location='args',
-                             required=True)
+                        required=True)
 put_parser.add_argument("rating", type=int, help="Enter the rating, integer from 0 to 5 inclusive",
-                             location='args', required=True)
+                        location='args', required=True)
 
 
 class Exercise(Resource):
@@ -37,6 +34,7 @@ class Exercise(Resource):
 
         # return resp[:5].to_dict()
         return {}, 200
+
     def put(self):
         args = put_parser.parse_args()
         user = DBUsers.query.filter_by(username=args['username']).first()

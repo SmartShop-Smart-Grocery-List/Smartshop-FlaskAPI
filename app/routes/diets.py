@@ -1,10 +1,10 @@
-
 from flask_restful import Resource, reqparse, fields
 from flask import Flask, abort
 from app.db.models import User as DBUsers
 
 get_parser = reqparse.RequestParser()
 get_parser.add_argument("username", type=str, help="Enter Username", location='args', required=True)
+
 
 class DietRecommendation(Resource):
 

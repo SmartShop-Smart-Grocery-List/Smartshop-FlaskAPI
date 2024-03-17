@@ -1,5 +1,6 @@
 from flask import Flask
 from config import Config
+from model.preprocessing import preprocess
 
 
 def create_app():
@@ -11,8 +12,8 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-        # data_management.data = data_management.DataManager()
-        # data_management.data.setup_recipe_colab_filter()
+        preprocess.data = preprocess.DataManager()
+        preprocess.data.setup_recipe_colab_filter()
 
     from app.routes.api import api
     api.init_app(app)

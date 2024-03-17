@@ -9,52 +9,57 @@ put_parser = reqparse.RequestParser()
 get_parser.add_argument('username', type=str, required=True, help='Username is required', location='args')
 
 post_parser.add_argument('username', type=str, required=True, help='Username is required', location='form')
-post_parser.add_argument('current_daily_calories', type=int, help='Enter the current daily calories for this user', location='form')
-post_parser.add_argument('goal_daily_calories', type=int, help='Enter the goal daily calories for this user', location='form')
+post_parser.add_argument('current_daily_calories', type=int, help='Enter the current daily calories for this user',
+                         location='form')
+post_parser.add_argument('goal_daily_calories', type=int, help='Enter the goal daily calories for this user',
+                         location='form')
 post_parser.add_argument('name', type=str, help='Name of the user', location='form')
 post_parser.add_argument('age', type=int, help='Age of the user', location='form')
 post_parser.add_argument('height', type=int, help='Height of the user in inches', location='form')
 post_parser.add_argument('weight', type=int, help='Weight of the user in lbs', location='form')
 post_parser.add_argument('gender', type=str, help="Gender of the user", location='form')
 post_parser.add_argument('current_level_of_activity', type=str,
-    help="""Current level of activity: 'sedentary' (little or no exercise), 'lightly active' (exercise 1–3 days/week), 
-'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 'very active' (hard exercise 6–7 days/week)]""",location='form')
+                         help="""Current level of activity: 'sedentary' (little or no exercise), 'lightly active' (exercise 1–3 days/week), 
+'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 'very active' (hard exercise 6–7 days/week)]""",
+                         location='form')
 post_parser.add_argument('goal_level_of_activity', type=str,
-    help="""Goal level of activity: 'sedentary' (little or no exercise), 
+                         help="""Goal level of activity: 'sedentary' (little or no exercise), 
 'lightly active' (exercise 1–3 days/week), 'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 
 'very active' (hard exercise 6–7 days/week)]""", location='form')
 post_parser.add_argument('weight_goal', type=str, help="Weight goal: 'lose', 'gain', 'maintain'", location='form')
 
 put_parser.add_argument('username', type=str, required=True, help='Username is required', location='args')
-put_parser.add_argument('current_daily_calories', type=int, help='Enter the current daily calories for this user', location='args')
-put_parser.add_argument('goal_daily_calories', type=int, help='Enter the goal daily calories for this user', location='form')
+put_parser.add_argument('current_daily_calories', type=int, help='Enter the current daily calories for this user',
+                        location='args')
+put_parser.add_argument('goal_daily_calories', type=int, help='Enter the goal daily calories for this user',
+                        location='form')
 put_parser.add_argument('name', type=str, help='Name of the user', location='args')
 put_parser.add_argument('age', type=int, help='Age of the user', location='args')
 put_parser.add_argument('height', type=int, help='Height of the user in inches', location='args')
 put_parser.add_argument('weight', type=int, help='Height of the user in inches', location='args')
 put_parser.add_argument('gender', type=str, help="Gender of the user", location='args')
 put_parser.add_argument('current_level_of_activity', type=str,
-    help="""Current level of activity: 'sedentary' (little or no exercise), 'lightly active' (exercise 1–3 days/week), 
-'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 'very active' (hard exercise 6–7 days/week)]""",location='args')
+                        help="""Current level of activity: 'sedentary' (little or no exercise), 'lightly active' (exercise 1–3 days/week), 
+'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 'very active' (hard exercise 6–7 days/week)]""",
+                        location='args')
 put_parser.add_argument('goal_level_of_activity', type=str,
-    help="""Goal level of activity: 'sedentary' (little or no exercise), 
+                        help="""Goal level of activity: 'sedentary' (little or no exercise), 
 'lightly active' (exercise 1–3 days/week), 'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 
 'very active' (hard exercise 6–7 days/week)]""", location='args')
 put_parser.add_argument('weight_goal', type=str, help="Weight goal: 'lose', 'gain', 'maintain'", location='args')
 
-
 user_fields = {
-            'username': fields.String,
-            'current_daily_calories': fields.Integer,
-            'name': fields.String,
-            'age': fields.Integer,
-            'height': fields.Integer,
-            'weight': fields.Float,
-            'gender': fields.String,
-            'current_level_of_activity': fields.String,
-            'goal_level_of_activity': fields.String,
-            'weight_goal': fields.String
-        }
+    'username': fields.String,
+    'current_daily_calories': fields.Integer,
+    'name': fields.String,
+    'age': fields.Integer,
+    'height': fields.Integer,
+    'weight': fields.Float,
+    'gender': fields.String,
+    'current_level_of_activity': fields.String,
+    'goal_level_of_activity': fields.String,
+    'weight_goal': fields.String
+}
 
 
 class User(Resource):
