@@ -72,9 +72,34 @@ def getRecipesWithConfiguration(recipes, user_id, user_ratings_count, colab_filt
     return recipes_found_sorted
 
 def getExerciseWithConfiguration(exercises, user_id, user_ratings_count, colab_filter=None, type=None, body_part=None, equipment=None, level=None):
-    raise NotImplementedError
+    conditions = []
+    if not (type is None):
+        conditions.append(f"Type == '{type}'")
+    if not (body_part is None):
+        conditions.append(f"BodyPart == '{body_part}'")
+    if not (equipment is None):
+        conditions.append(f"Equipment == '{equipment}'")
+    if not (level is None):
+        conditions.append(f"Level == '{level}'")
 
-def 
+    query_string = " and ".join(conditions)
+
+    if query_string:
+        exercises_found = exercises.query(query_string).sort_values(by='Rating', ascending=False)
+        if exercises_found:
+            if colab_filter:
+                exercise_ids = exercises_found['id'].tolist()
+                weighted_predictions = []
+                for exercise_id in exercise_ids:
+                    colab_prediction = colab_filter.predict(user_id, exercise_id)
+                    weighted_predictions.append((exercise_id, calculate_weighted_prediction(colab_prediction, user_ratings_count)))
+                weighted_predictions = sorted(weighted_predictions, key=lambda x: x[1], reverse=True)
+                sorted_exercise_ids = [pred[0] for pred in weighted_predictions]
+                exercises_found = exercises_found.reindex(sorted_exercise_ids)
+            
+            return exercises_found
+            
+    return exercises
 
 def sigmoid(x, k=1, x0=0):
     return 1 / (1 + np.exp(-k*(x-x0)))
@@ -88,3 +113,9 @@ def calculate_weighted_prediction(bayesian_avg, colab_prediction, count_items_ra
     
     weighted_prediction = (bayesian_avg * (1 - colab_weight)) + (colab_prediction * colab_weight)    
     return weighted_prediction
+
+def get_seasons():
+    from datetime import datetime
+    month = datetime.today().strftime("%m")
+    
+    print(month)

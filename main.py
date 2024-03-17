@@ -2,7 +2,7 @@ from flask import Flask, abort
 from flask_restful import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from recommend import getRecipesWithConfiguration
+from recommend import getRecipesWithConfiguration, getExerciseWithConfiguration
 import data_management
 import pandas as pd
 from sqlalchemy import create_engine
@@ -13,7 +13,8 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///default.db'
 app.config['SQLALCHEMY_BINDS'] = {
     'users': 'sqlite:///user_database.db',
-    'recipe_ratings': 'sqlite:///recipe_ratings_database.db'
+    'recipe_ratings': 'sqlite:///recipe_ratings.db',
+    'exercise_ratings': 'sqlite:///exercise_ratings.db',
 }
 db = SQLAlchemy(app)
 
@@ -115,7 +116,7 @@ class User(Resource):
 
         global current_max_id
         if current_max_id is None:
-            current_max_id = db.session.query(db.func.max(DBUsers.user_id)).scalar() or 60315
+            current_max_id = db.session.query(db.func.max(DBUsers.user_id)).scalar() or 60314
 
         new_user_data = {'user_id': current_max_id + 1, 'username': username}
 
@@ -211,13 +212,18 @@ class User(Resource):
         if not user:
             abort(404, {'error': 'User not found'})
 
-        if all(args[key] is None for key in ['daily calories', 'name', 'age', 'height', 'weight', 'gender', 'current_level_of_activity', 'goal_level_of_activity', 'weight_goal']):
+        if all(args[key] is None for key in ['current_daily_calories', 'goal_daily_calories', 'name', 'age', 'height', 'weight', 'gender', 'current_level_of_activity', 'goal_level_of_activity', 'weight_goal']):
             abort(400, {'error': 'At least one field must be provided for update'})
 
-        if args['daily calories']:
-            if args['daily calories'] < 0:
-                abort(400, {'error': 'Daily calories must be a non-negative integer'})
-            user.average_daily_calories = args['daily calories']
+        if args['current_daily_calories']:
+            if args['current_daily_calories'] < 0:
+                abort(400, {'error': 'Current daily calories must be a non-negative integer'})
+            user.current_daily_calories = args['current_daily_calories']
+
+        if args['goal_daily_calories']:
+            if args['goal_daily_calories'] < 0:
+                abort(400, {'error': 'Goal daily calories must be a non-negative integer'})
+            user.goal_daily_calories = args['goal_daily_calories']
 
         if args['name']:
             user.name = args['name']
@@ -288,7 +294,7 @@ class Recipe(Resource):
         if not user:
             abort(404, {'error': 'User not found'})
 
-        if data_management.data.is_user_in_filter(user.user_id):
+        if data_management.data.is_user_in_filter(user.user_id, data_management.data.recipe_colab_filter_trainset):
             resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, (data_management.data.user_interactions['user_id'] == user.user_id).sum(),
                                            colab_filter=data_management.data.recipe_colab_filter,
                                            calories=args['calories'], daily=user.goal_daily_calories,
@@ -301,6 +307,7 @@ class Recipe(Resource):
                                 fat=args['fat'], sat_fat=args['sat fat'],
                                 sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
                                 carbs=args['carbs'], tags=args['tags'])
+    
         return resp[:5].to_dict()
     
     def put(self):
@@ -315,10 +322,15 @@ class Recipe(Resource):
         
         if not args['recipe_id'] in data_management.data.recipes['id'].values:
             abort(404, {'error': 'Invalid recipe_id'})
-        
-        new_rating = DBRecipeRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
-        db.session.add(new_rating)
-        db.session.commit()
+
+        user_rating = DBRecipeRatings.query.filter_by(user_id=user.user_id, recipe_id=args['recipe_id']).first()
+        if user_rating is None:
+            new_rating = DBRecipeRatings(user_id=user.user_id, recipe_id=args['recipe_id'], rating=args['rating'])
+            db.session.add(new_rating)
+            db.session.commit()
+        else:
+            user_rating.rating = args['rating']
+            db.session.commit()
         
         return {"data": {"username": args['username']}}, 201
 
@@ -423,10 +435,10 @@ exercise_get_args.add_argument("body_part", type=str, help="Enter the main body 
 exercise_get_args.add_argument("equipment", type=str, help="Enter the equipment used in the exercise", location='args')
 exercise_get_args.add_argument("level", type=str, help="Enter the difficulty level", location='args')
 
-recipe_put_args = reqparse.RequestParser()
-recipe_put_args.add_argument("username", type=str, help="Enter Username", location='args', required=True)
-recipe_put_args.add_argument("exercise_id", type=int, help="Enter the id of the exercise", location='args', required=True)
-recipe_put_args.add_argument("rating", type=int, help="Enter the rating, integer from 0 to 5 inclusive", location='args', required=True)
+exercise_put_args = reqparse.RequestParser()
+exercise_put_args.add_argument("username", type=str, help="Enter Username", location='args', required=True)
+exercise_put_args.add_argument("exercise_id", type=int, help="Enter the id of the exercise", location='args', required=True)
+exercise_put_args.add_argument("rating", type=int, help="Enter the rating, integer from 0 to 5 inclusive", location='args', required=True)
 
 class Exercise(Resource):
     def get(self):
@@ -436,18 +448,30 @@ class Exercise(Resource):
         if not user:
             abort(404, {'error': 'User not found'})
         
+        if not args['type'] in ['Strength', 'Plyometrics', 'Stretching', 'Powerlifting', 'Strongman', 'Cardio', 'Olympic Weightlifting']:
+            abort(400, {'error': "Invalid type. Valid types: 'Strength' 'Plyometrics' 'Stretching' 'Powerlifting' 'Strongman' 'Cardio' 'Olympic Weightlifting'"})
         
+        if not args['body_part'] in ['Abdominals', 'Abductors', 'Adductors', 'Biceps', 'Calves', 'Chest', 'Forearms', 'Glutes', 'Hamstrings', 'Lats', 'Lower Back', 'Middle Back', 'Traps', 'Quadriceps', 'Shoulders', 'Triceps']:
+            abort(400, {'error': "Invalid body part. Valid body parts: 'Abdominals' 'Abductors' 'Adductors' 'Biceps' 'Calves' 'Chest' 'Forearms' 'Glutes' 'Hamstrings' 'Lats' 'Lower Back' 'Middle Back' 'Traps' 'Quadriceps' 'Shoulders' 'Triceps'"})
+        
+        if not args['equipment'] in ['Bands', 'Barbell', 'Kettlebells', 'Dumbbell', 'Other', 'Cable', 'Machine', 'Body Only', 'Medicine Ball', 'Exercise Ball', 'Foam Roll', 'E-Z Curl Bar']:
+            abort(400, {'error': "Invalid equipment. Valid equipment: 'Bands' 'Barbell' 'Kettlebells' 'Dumbbell' 'Other' 'Cable' 'Machine' 'Body Only' 'Medicine Ball' 'Exercise Ball' 'Foam Roll' 'E-Z Curl Bar'"})
+        
+        if not args['level'] in ['Intermediate', 'Beginner', 'Expert']:
+            abort(400, {'error': "Invalid level. Valid level: 'Intermediate' 'Beginner' 'Expert'"})
 
-        resp = getRecipesWithConfiguration(data_management.data.recipes, data_management.data.recipe_colab_filter,
-                                           calories=args['calories'], daily=user.goal_daily_calories,
-                                           fat=args['fat'], sat_fat=args['sat fat'],
-                                           sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
-                                           carbs=args['carbs'], tags=args['tags'])
-        
+        if data_management.data.is_user_in_filter(user.user_id, data_management.data.exercise_colab_filter_trainset):
+            resp = getExerciseWithConfiguration(data_management.data.exercises, user.user_id, (data_management.data.exercise_ratings['user_id'] == user.user_id).sum(),
+                                                colab_filter=data_management.data.exercise_colab_filter,
+                                                type=args['type'], body_part=args['body_part'], equipment=args['equipment'], level=args['level'])
+        else:        
+            resp = getExerciseWithConfiguration(data_management.data.exercises, user.user_id, 0, colab_filter=None,
+                                                type=args['type'], body_part=args['body_part'], equipment=args['equipment'], level=args['level'])
+
         return resp[:5].to_dict()
     
     def put(self):
-        args = recipe_put_args.parse_args()
+        args = exercise_put_args.parse_args()
         user = DBUsers.query.filter_by(username=args['username']).first()
 
         if not user:
@@ -456,13 +480,17 @@ class Exercise(Resource):
         if not args['rating'] in [0, 1, 2, 3, 4, 5]:
             abort(400, {'error': 'Rating not integer in range [0, 5]'})
 
-        # TODO
         if not args['exercise_id'] in data_management.data.exercises['id'].values:
-            abort(404, {'error': 'Invalid recipe_id'})
+            abort(404, {'error': 'Invalid exercise_id'})
         
-        new_rating = DBExerciseRatings(user_id=user.user_id, exercise_id=args['exercise_id'], rating=args['rating'])
-        db.session.add(new_rating)
-        db.session.commit()
+        user_rating = DBExerciseRatings.query.filter_by(user_id=user.user_id, exercise_id=args['exercise_id']).first()
+        if user_rating is None:        
+            new_rating = DBExerciseRatings(user_id=user.user_id, exercise_id=args['exercise_id'], rating=args['rating'])
+            db.session.add(new_rating)
+            db.session.commit()
+        else:
+            user_rating.rating = args['rating']
+            db.session.commit()
         
         return {"data": {"username": args['username']}}, 201
     
@@ -475,5 +503,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         data_management.data = data_management.DataManager()
-        data_management.data.setup_recipe_colab_filter()
     app.run(port=5000, debug=True)

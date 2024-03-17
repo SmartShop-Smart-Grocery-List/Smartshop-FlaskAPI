@@ -11,6 +11,13 @@ class DataManager:
                                             read_recipe_ratings_db().rename(columns={'recipe_id': 'id'}, inplace=True)], ignore_index=True)
         self.recipe_colab_filter = None
         self.recipe_colab_filter_trainset = None
+        self.setup_recipe_colab_filter()
+
+        self.exercises = pd.read_csv("Data/Exercises.csv")
+        self.exercise_ratings = read_exercises_ratings_db()
+        self.exercise_colab_filter = None
+        self.exercise_colab_filter_trainset = None
+
     
     def setup_recipe_colab_filter(self):
         data = Dataset.load_from_df(self.user_interactions[["user_id", "id", "rating"]], Reader(rating_scale=(0, 5)))
@@ -18,16 +25,20 @@ class DataManager:
         self.recipe_colab_filter = SVD(n_factors=1, n_epochs=1, biased=True, lr_all=0.005, reg_all=0.2)
         self.recipe_colab_filter.fit(self.recipe_colab_filter_trainset)
     
-    def is_user_in_filter(self, ruid):
+    def is_user_in_filter(self, ruid, trainset):
         try:
-            self.recipe_colab_filter_trainset.knows_user(ruid)
+            trainset.knows_user(ruid)
             return True
         except ValueError:
             return False
         
 
 def read_recipe_ratings_db():
-    engine = create_engine('sqlite:///instance/recipe_ratings_database.db')
+    engine = create_engine('sqlite:///instance/recipe_ratings.db')
     df = pd.read_sql_table('recipe_ratings', con=engine)
     return df
 
+def read_exercises_ratings_db():
+    engine = create_engine('sqlite:///instance/exercise_ratings.db')
+    df = pd.read_sql_table('exercise_ratings', con=engine)
+    return df
