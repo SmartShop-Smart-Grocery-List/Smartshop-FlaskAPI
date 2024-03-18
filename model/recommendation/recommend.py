@@ -144,6 +144,27 @@ class Recommender:
                     return exercises_found
 
             return exercises
+        
+    def get_time_tags(self):
+        from datetime import datetime
+        tags = []
+
+        month = int(datetime.today().strftime("%m"))
+        if 3 <= month <= 5:
+            tags.append('spring')
+        elif 6 <= month <= 8:
+            tags.append('summer')
+        elif 9 <= month <= 11:
+            tags.append('fall')
+        else:
+            tags.append('winter')
+
+        hour_of_day = int(datetime.today().strftime("%H"))
+        if 5 <= hour_of_day <= 12:
+            tags.append('breakfast')
+        if 11 <= hour_of_day <= 4:
+            tags.append('lunch')
+        return tags
 
     def get_recipes_with_configuration(self, recipes, user_id, user_ratings_count, colab_filter=None, calories=None,
                                        daily=2000,
@@ -223,6 +244,21 @@ class Recommender:
             predictions_sorted = sorted(weighted_predictions, key=lambda x: x[1], reverse=True)
             sorted_recipe_ids = [pred[0] for pred in predictions_sorted]
             recipes_found_sorted = recipes_found_sorted.reindex(sorted_recipe_ids)
+        
+        time_tags = self.get_time_tags()
+        recipes_with_time_context = []
+        for tag in time_tags:
+            if tag in tags:
+                continue
+            recp = self.get_recipes_with_configuration(calories=calories, daily=daily, fat=fat, sat_fat=sat_fat, sugar=sugar, sodium=sodium, protein=protein, carbs=carbs, tags=tags + [tag])
+            if not(type(recp) == bool and recp == False):
+                recipes_with_time_context.append(recp[:5])
+
+        if recipes_with_time_context == []:
+            return recipes_found_sorted
+        
+        recipes_with_time_context = pd.concat(recipes_with_time_context, ignore_index=True)
+        recipes_found_sorted = pd.concat([recipes_with_time_context[:2], recipes_found_sorted], ignore_index=True).drop_duplicates()
 
         return recipes_found_sorted
 
