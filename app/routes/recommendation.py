@@ -26,7 +26,20 @@ get_parser.add_argument("level", type=str, help="Enter the difficulty level", lo
 
 
 class Recommendation(Resource):
+    """
+    Resource class for providing personalized recommendations.
+
+    Methods:
+        get(self): Retrieves personalized recommendations for a user.
+    """
+
     def get(self):
+        """
+        Retrieves personalized recommendations for a user.
+
+        Returns:
+            dict: Dictionary containing personalized recommendations.
+        """
         args = get_parser.parse_args()
         user = db.session.query(DBUsers).where(DBUsers.username == args['user']).first()
 

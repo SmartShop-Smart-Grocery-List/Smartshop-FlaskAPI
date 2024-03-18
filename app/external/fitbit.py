@@ -12,12 +12,28 @@ HOME = os.path.join(os.getcwd())
 
 
 def authenticate(ACCESS_TOKEN, REFRESH_TOKEN):
+    """
+    Authenticates the FitBit client using access and refresh tokens.
+
+    Args:
+        ACCESS_TOKEN (str): Access token for FitBit API.
+        REFRESH_TOKEN (str): Refresh token for FitBit API.
+
+    Returns:
+        None
+    """
     global auth2_client
     auth2_client = fitbit.Fitbit(CLIENT_ID, CLIENT_SECRET, oauth2=True, access_token=ACCESS_TOKEN,
                                  refresh_token=REFRESH_TOKEN)
 
 
 def fetchDistance():
+    """
+    Fetches distance data from FitBit API and writes it to a CSV file.
+
+    Returns:
+        None
+    """
     today = datetime.date.today()
     prev_week = today - datetime.timedelta(weeks=1)
     distance_json = auth2_client.time_series('activities/distance', base_date=prev_week, end_date=today)
@@ -33,6 +49,12 @@ def fetchDistance():
 
 
 def fetchSteps():
+    """
+    Fetches steps data from FitBit API and writes it to a CSV file.
+
+    Returns:
+        None
+    """
     today = datetime.date.today()
     prev_week = today - datetime.timedelta(weeks=1)
     steps_json = auth2_client.time_series('activities/steps', base_date=prev_week, end_date=today)
@@ -47,6 +69,12 @@ def fetchSteps():
 
 
 def fetchSleep():
+    """
+    Fetches sleep data from FitBit API and writes it to a CSV file.
+
+    Returns:
+        None
+    """
     today = datetime.date.today()
     prev_week = today - datetime.timedelta(weeks=1)
     sleep_json = auth2_client.time_series('sleep/', base_date=prev_week, end_date=today)
@@ -61,6 +89,12 @@ def fetchSleep():
 
 
 def fetchCaloriesBurned():
+    """
+    Fetches calories burned data from FitBit API and writes it to a CSV file.
+
+    Returns:
+        None
+    """
     today = datetime.date.today()
     prev_week = today - datetime.timedelta(weeks=1)
     calories_json = auth2_client.time_series('activities/calories', base_date=prev_week, end_date=today)
@@ -75,6 +109,12 @@ def fetchCaloriesBurned():
 
 
 def fetchHeartRate():
+    """
+    Fetches heart rate data from FitBit API and writes it to a CSV file.
+
+    Returns:
+        None
+    """
     today = datetime.date.today()
     prev_week = today - datetime.timedelta(weeks=1)
     heart_json = auth2_client.time_series('activities/heart', base_date=prev_week, end_date=today)
@@ -91,6 +131,12 @@ def fetchHeartRate():
 
 
 def mergeCSV():
+    """
+    Merges CSV files generated from FitBit data into a single CSV file.
+
+    Returns:
+        None
+    """
     csv_files = os.listdir(os.getcwd())
 
     df1 = 0
@@ -135,6 +181,12 @@ def mergeCSV():
 
 
 def load_index():
+    """
+    Loads the index directory and creates a new week directory if necessary.
+
+    Returns:
+        None
+    """
     index_path = os.path.join(HOME, 'index')
 
     if not os.path.exists(index_path):  # index directory does not exist
@@ -157,6 +209,12 @@ def load_index():
 
 
 def setup_database():
+    """
+    Sets up the database by loading FitBit data from CSV files.
+
+    Returns:
+        None
+    """
     os.chdir(f'{HOME}/assets')
 
     # Close the database connection if it's open
@@ -184,6 +242,12 @@ def setup_database():
 
 
 def archive_data():
+    """
+    Archives FitBit data by fetching, merging, and setting up the database.
+
+    Returns:
+        None
+    """
     load_index()
     fetchDistance()
     fetchSteps()

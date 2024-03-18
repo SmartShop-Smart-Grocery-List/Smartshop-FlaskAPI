@@ -7,8 +7,19 @@ get_parser.add_argument("username", type=str, help="Enter Username", location='a
 
 
 class DietRecommendation(Resource):
+    """
+    Resource class for providing diet recommendations based on user information.
 
+    Methods:
+        get(self): Retrieves diet recommendations for a given user.
+    """
     def get(self):
+        """
+        Retrieves diet recommendations for a given user.
+
+        Returns:
+            Dict[str, Dict[str, str]]: A dictionary containing diet recommendations.
+        """
         args = get_parser.parse_args()
         user = DBUsers.query.filter_by(username=args['username']).first()
 

@@ -9,6 +9,14 @@ db = SQLAlchemy()
 
 
 class ExerciseRating(db.Model):
+    """
+    A class to represent the ratings given by users to exercises.
+
+    Attributes:
+        exercise_id (int): The unique identifier for the exercise.
+        user_id (int): The unique identifier for the user who rated the exercise.
+        rating (int): The rating given by the user to the exercise.
+    """
     __tablename__ = 'exercise_ratings'
     exercise_id = Column(Integer, primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'), nullable=False)
@@ -19,6 +27,14 @@ class ExerciseRating(db.Model):
 
 
 class RecipeRating(db.Model):
+    """
+    A class to represent the ratings given by users to recipes.
+
+    Attributes:
+        recipe_id (int): The unique identifier for the recipe.
+        user_id (int): The unique identifier for the user who rated the recipe.
+        rating (int): The rating given by the user to the recipe.
+    """
     __tablename__ = 'recipe_ratings'
     recipe_id = Column(Integer, primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'), nullable=False)
@@ -29,6 +45,19 @@ class RecipeRating(db.Model):
 
 
 class FitBit(db.Model):
+    """
+    A class to represent FitBit data for users.
+
+    Attributes:
+        user_id (int): The unique identifier for the user.
+        date (str): The date of the FitBit data entry.
+        distance (str): The distance covered.
+        steps (str): The number of steps taken.
+        sleep (str): The sleep data.
+        calories (str): The calories burned.
+        restingHeartRate (str): The resting heart rate.
+        maxHeartRate (str): The maximum heart rate.
+    """
     __tablename__ = 'fitbit_data'
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'), primary_key=True, nullable=False)
     date = Column(Text)
@@ -41,6 +70,26 @@ class FitBit(db.Model):
 
 
 class User(db.Model):
+    """
+    A class to represent users.
+
+    Attributes:
+        user_id (int): The unique identifier for the user.
+        username (str): The username of the user.
+        current_daily_calories (int): The current daily calorie intake of the user.
+        goal_daily_calories (int): The goal daily calorie intake of the user.
+        name (str): The name of the user.
+        age (int): The age of the user.
+        height (int): The height of the user.
+        weight (int): The weight of the user.
+        gender (str): The gender of the user.
+        current_level_of_activity (str): The current level of activity of the user.
+        goal_level_of_activity (str): The goal level of activity of the user.
+        weight_goal (str): The weight goal of the user.
+        recipe_ratings (List[RecipeRating]): The list of recipe ratings given by the user.
+        fitbit_data (List[FitBit]): The list of FitBit data entries for the user.
+        exercise_ratings (List[ExerciseRating]): The list of exercise ratings given by the user.
+    """
     __tablename__ = 'users'
     user_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     username = Column(Text, nullable=False)

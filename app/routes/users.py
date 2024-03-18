@@ -63,8 +63,22 @@ user_fields = {
 
 
 class User(Resource):
+    """
+    Resource class for managing user data.
 
+    Methods:
+        get(self): Retrieves user data.
+        post(self): Creates a new user.
+        put(self): Updates user information.
+    """
     def get(self):
+        """
+        Retrieves user data.
+
+        Returns:
+            Tuple[Dict[str, Any], int]: Tuple containing user data and HTTP status code.
+        """
+
         args = get_parser.parse_args()
         username = args['username']
         user = DBUsers.query.filter_by(username=username).first()
@@ -88,6 +102,12 @@ class User(Resource):
         return user_data, 200
 
     def post(self):
+        """
+        Creates a new user.
+
+        Returns:
+            Tuple[Dict[str, str], int]: Tuple containing response data and HTTP status code.
+        """
         args = post_parser.parse_args()
 
         if len(args['username']) > 128:
@@ -168,6 +188,12 @@ class User(Resource):
         return {"data": {"username": username}}, 201
 
     def put(self):
+        """
+        Updates user information.
+
+        Returns:
+            Tuple[Dict[str, str], int]: Tuple containing response message and HTTP status code.
+        """
         args = put_parser.parse_args()
         username = args['username']
         user = DBUsers.query.filter_by(username=username).first()

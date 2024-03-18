@@ -28,4 +28,14 @@ class Context:
         else:
             return f"No context found for '{key}'"
 
+    def __getattr__(self, key):
+        return self.context[key]
 
+    def __setattr__(self, key, value):
+        self.context[key] = value
+
+    def __getitem__(self, key):
+        return self.context[key]
+
+    def __setitem__(self, key, value):
+        self.context[key] = value

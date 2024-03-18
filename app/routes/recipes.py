@@ -23,7 +23,20 @@ put_parser.add_argument("rating", type=int, help="Enter the rating, integer from
 
 
 class Recipe(Resource):
+    """
+    Resource class for handling recipe-related requests.
+
+    Methods:
+        get(self): Retrieves recipe recommendations based on user preferences.
+        put(self): Records user ratings for recipes.
+    """
     def get(self):
+        """
+        Retrieves recipe recommendations based on user preferences.
+
+        Returns:
+            dict: Dictionary containing recipe recommendations.
+        """
         args = get_parser.parse_args()
         user = DBUsers.query.filter_by(username=args['username']).first()
 
@@ -47,6 +60,12 @@ class Recipe(Resource):
         return resp[:5].to_dict()
 
     def put(self):
+        """
+        Records user ratings for recipes.
+
+        Returns:
+            dict: Acknowledgment message.
+        """
         args = put_parser.parse_args()
         user = DBUsers.query.filter_by(username=args['username']).first()
 
