@@ -69,9 +69,6 @@ class Recommender:
 
             return exercises
 
-    def get_fit_with_configuration(self) -> None:
-        pass
-
     def get_recipes_with_configuration(self, recipes, user_id, user_ratings_count, colab_filter=None, calories=None,
                                        daily=2000,
                                        fat="NULL", sat_fat="NULL", sugar="NULL", sodium="NULL", protein="NULL",
