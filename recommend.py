@@ -64,12 +64,49 @@ def getRecipesWithConfiguration(recipes, user_id, user_ratings_count, colab_filt
             bayesian_avg = recipes_found[recipes_found['id'] == recipe_id]['bayesian_avg'].values[0]
             colab_prediction = colab_filter.predict(user_id, recipe_id)
             
-            weighted_predictions.append((recipe_id, calculate_weighted_prediction(bayesian_avg, colab_prediction, user_ratings_count)))
+            weighted_predictions.append((recipe_id, calculate_weighted_prediction(bayesian_avg, colab_prediction.est, user_ratings_count)))
         predictions_sorted = sorted(weighted_predictions, key=lambda x: x[1], reverse=True)
         sorted_recipe_ids = [pred[0] for pred in predictions_sorted]
         recipes_found_sorted = recipes_found_sorted.reindex(sorted_recipe_ids)
+    
+    
+    time_tags = get_time_tags()
+    recipes_with_time_context = []
+    for tag in time_tags:
+        if tag in tags:
+            continue
+        recp = getRecipesWithConfiguration(recipes, user_id, user_ratings_count, colab_filter=colab_filter, calories=calories, daily=daily, fat=fat, sat_fat=sat_fat, sugar=sugar, sodium=sodium, protein=protein, carbs=carbs, tags=tags + [tag])
+        if not(type(recp) == bool and recp == False):
+            recipes_with_time_context.append(recp[:5])
+
+    if recipes_with_time_context == []:
+        return recipes_found_sorted
+    
+    recipes_with_time_context = pd.concat(recipes_with_time_context, ignore_index=True)
+    recipes_found_sorted = pd.concat([recipes_with_time_context[:2], recipes_found_sorted], ignore_index=True).drop_duplicates()
 
     return recipes_found_sorted
+
+def get_time_tags():
+    from datetime import datetime
+    tags = []
+
+    month = int(datetime.today().strftime("%m"))
+    if 3 <= month <= 5:
+        tags.append('spring')
+    elif 6 <= month <= 8:
+        tags.append('summer')
+    elif 9 <= month <= 11:
+        tags.append('fall')
+    else:
+        tags.append('winter')
+
+    hour_of_day = int(datetime.today().strftime("%H"))
+    if 5 <= hour_of_day <= 12:
+        tags.append('breakfast')
+    if 11 <= hour_of_day <= 4:
+        tags.append('lunch')
+    return tags
 
 def getExerciseWithConfiguration(exercises, user_id, user_ratings_count, colab_filter=None, type=None, body_part=None, equipment=None, level=None):
     conditions = []
@@ -114,8 +151,82 @@ def calculate_weighted_prediction(bayesian_avg, colab_prediction, count_items_ra
     weighted_prediction = (bayesian_avg * (1 - colab_weight)) + (colab_prediction * colab_weight)    
     return weighted_prediction
 
-def get_seasons():
-    from datetime import datetime
-    month = datetime.today().strftime("%m")
-    
-    print(month)
+
+def get_lifestyle_score(user, average_sleep, average_calories, average_steps):
+    """
+    Calculates lifestyle score.
+
+    Args:
+        personalization: Personalization data.
+
+    Returns:
+        dict: Dictionary containing lifestyle scores.
+    """
+    age = user.age
+    height = user.height
+    weight = user.weight
+    gender = user.gender
+    cur_activity = user.current_level_of_activity
+    goal_activity = user.goal_level_of_activity
+    weight_goal = user.weight_goal
+    if weight_goal == 'lose':
+        weight_goal = weight-10
+    elif weight_goal == 'gain':
+        weight_goal = weight+10
+    else:
+        weight_goal = weight
+
+    ratio = lambda x,y: activity_coefficient(x) / activity_coefficient(y)
+
+    current_bmr = get_bmr(gender, height, weight, age) * activity_coefficient(cur_activity)
+    ideal_bmr = get_bmr(gender, height, weight_goal, age) * activity_coefficient(goal_activity)
+
+    wellness_score = round(5 - (abs(ideal_bmr - current_bmr))/ideal_bmr * 5,2)
+
+    # average_sleep = sum([fit.sleep for fit in fitness])/len(fitness)
+    # average_calories = sum([fit.calories for fit in fitness])/len(fitness)
+    # average_steps = sum([fit.steps for fit in fitness]) / len(fitness)
+
+    fitness_score = ((average_sleep * 5 / 8) + (5 - (average_calories/ideal_bmr)*5) + (min(5., average_steps/1000))) / 3
+
+    diet_score = 5 # when use is able to input stuff
+
+    return {
+        "wellness_score": wellness_score,
+        "sleep_score": diet_score,
+        "fitness_score": fitness_score,
+        "lifestyle_score": round((wellness_score + diet_score + fitness_score) / 3, 2)
+    }
+
+def activity_coefficient(activity):
+    match activity:
+        case 'sedentary':
+            return 1.2
+        case 'lightly active':
+            return 1.375
+        case 'moderately active':
+            return 1.55
+        case 'very active':
+            return 1.725
+        case 'extra active':
+            return 1.9
+        
+def get_bmr(gender, height, weight, age):
+    """
+    Calculate Basal Metabolic Rate (BMR) based on gender, height, weight, and age.
+
+    BMR is the number of calories required to keep your body functioning at rest.
+
+    Args:
+        gender (str): Gender of the individual ('m' for male, 'f' for female).
+        height (float): Height of the individual in centimeters.
+        weight (float): Weight of the individual in kilograms.
+        age (int): Age of the individual in years.
+
+    Returns:
+        float: Basal Metabolic Rate (BMR) in calories per day.
+    """
+    if gender == 'M':
+        return 66.473 + 13.7516 * weight + 5.0033 * height - 6.755 * age
+    else:
+        return 655.0955 + 9.5634 * weight + 1.8496 * height - 4.6756 * age

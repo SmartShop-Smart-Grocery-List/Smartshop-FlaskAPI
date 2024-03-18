@@ -2,7 +2,7 @@ from flask import Flask, abort
 from flask_restful import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from recommend import getRecipesWithConfiguration, getExerciseWithConfiguration
+from recommend import getRecipesWithConfiguration, getExerciseWithConfiguration, get_lifestyle_score
 import data_management
 import pandas as pd
 from sqlalchemy import create_engine
@@ -82,22 +82,22 @@ user_get_args = reqparse.RequestParser()
 user_get_args.add_argument('username', type=str, required=True, help='Username is required', location='args')
 
 user_put_args = reqparse.RequestParser()
-user_put_args.add_argument('username', type=str, required=True, help='Username is required', location='args')
-user_put_args.add_argument('current_daily_calories', type=int, help='Enter the current daily calories for this user', location='args')
+user_put_args.add_argument('username', type=str, required=True, help='Username is required', location='form')
+user_put_args.add_argument('current_daily_calories', type=int, help='Enter the current daily calories for this user', location='form')
 user_put_args.add_argument('goal_daily_calories', type=int, help='Enter the goal daily calories for this user', location='form')
-user_put_args.add_argument('name', type=str, help='Name of the user', location='args')
-user_put_args.add_argument('age', type=int, help='Age of the user', location='args')
-user_put_args.add_argument('height', type=int, help='Height of the user in inches', location='args')
-user_put_args.add_argument('weight', type=int, help='Height of the user in inches', location='args')
-user_put_args.add_argument('gender', type=str, help="Gender of the user ('M' or 'F')", location='args')
+user_put_args.add_argument('name', type=str, help='Name of the user', location='form')
+user_put_args.add_argument('age', type=int, help='Age of the user', location='form')
+user_put_args.add_argument('height', type=int, help='Height of the user in inches', location='form')
+user_put_args.add_argument('weight', type=int, help='Height of the user in inches', location='form')
+user_put_args.add_argument('gender', type=str, help="Gender of the user ('M' or 'F')", location='form')
 user_put_args.add_argument('current_level_of_activity', type=str,
     help="""Current level of activity: 'sedentary' (little or no exercise), 'lightly active' (exercise 1–3 days/week), 
-'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 'very active' (hard exercise 6–7 days/week)]""",location='args')
+'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 'very active' (hard exercise 6–7 days/week)]""",location='form')
 user_put_args.add_argument('goal_level_of_activity', type=str,
     help="""Goal level of activity: 'sedentary' (little or no exercise), 
 'lightly active' (exercise 1–3 days/week), 'moderately active' (exercise 3–5 days/week), 'active' (exercise 6–7 days/week), 
-'very active' (hard exercise 6–7 days/week)]""", location='args')
-user_put_args.add_argument('weight_goal', type=str, help="Weight goal: 'lose', 'gain', 'maintain'", location='args')
+'very active' (hard exercise 6–7 days/week)]""", location='form')
+user_put_args.add_argument('weight_goal', type=str, help="Weight goal: 'lose', 'gain', 'maintain'", location='form')
 
 current_max_id = None
 
@@ -298,7 +298,7 @@ class Recipe(Resource):
             resp = getRecipesWithConfiguration(data_management.data.recipes, user.user_id, (data_management.data.user_interactions['user_id'] == user.user_id).sum(),
                                            colab_filter=data_management.data.recipe_colab_filter,
                                            calories=args['calories'], daily=user.goal_daily_calories,
-                                           fat=args['fat'], sat_fat=args['sat fat'],
+                                           fat=args['fat'], sat_fat=args['sat_fat'],
                                            sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
                                            carbs=args['carbs'], tags=args['tags'])
         else:
@@ -427,6 +427,7 @@ class DietRecommendation(Resource):
                 option['goal_daily_calories'] = user.current_daily_calories
                 option['goal_level_of_activity'] = user.current_level_of_activity
                 recommendation_options['option_1'] = option
+        return recommendation_options
 
 exercise_get_args = reqparse.RequestParser()
 exercise_get_args.add_argument("username", type=str, help="Enter Username", location='args', required=True)
@@ -494,10 +495,29 @@ class Exercise(Resource):
         
         return {"data": {"username": args['username']}}, 201
     
+
+class Lifestyle(Resource):
+    def get(self):
+        args = diet_recommendation_get_args.parse_args()
+        user = DBUsers.query.filter_by(username=args['username']).first()
+
+        if not user:
+            abort(404, {'error': 'User not found'})
+
+        if not user.weight_goal:
+            abort(400, {'error': 'User does not have a weight goal'})
+        
+        if not (user.age and user.height and user.weight and user.gender and user.current_level_of_activity):
+            abort(400, {'error': 'One of: age, height, weight, gender, current_level_of_of_activity missing'})
+                
+        return get_lifestyle_score(user, 7, 2248, 6785)
+    
 api.add_resource(Recipe, "/recommend/recipe")
 api.add_resource(Exercise, "/recommend/exercise")
 api.add_resource(DietRecommendation, "/recommend/diet")
 api.add_resource(User, "/user")
+
+api.add_resource(Lifestyle, "/lifestyle")
 
 if __name__ == '__main__':
     with app.app_context():
