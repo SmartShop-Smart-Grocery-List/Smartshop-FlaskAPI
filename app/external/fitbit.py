@@ -173,7 +173,7 @@ def setup_database():
 
         df = pd.read_csv('health_data.csv', header=None)
         df.columns = ['date', 'distance', 'steps', 'sleep', 'calories', 'restingHeartRate', 'maxHeartRate']
-        df.to_sql(name='fitbit_data', con=db, if_exists='append', index=False)
+        df.to_sql(name='fitbit_data', con=current_app.config["SQLALCHEMY_DATABASE_URI"], if_exists='append', index=False)
         db.session.commit()
 
     except Exception as e:
