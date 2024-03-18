@@ -1,8 +1,10 @@
 from flask_restful import Resource, reqparse
 from flask import abort
 from app.db.models import RecipeRating as DBRecipeRatings, db, User as DBUsers
+from model.contextualization.context import Context
+from model.personalization.personalization import Personalizer
 from model.preprocessing import preprocess
-from model.recommendation.recommend import get_recipes_with_configuration
+from model.recommendation.recommend import Recommender
 
 get_parser = reqparse.RequestParser()
 get_parser.add_argument("username", type=str, help="Enter Username", location='args', required=True)
@@ -30,6 +32,7 @@ class Recipe(Resource):
         get(self): Retrieves recipe recommendations based on user preferences.
         put(self): Records user ratings for recipes.
     """
+
     def get(self):
         """
         Retrieves recipe recommendations based on user preferences.
@@ -43,20 +46,23 @@ class Recipe(Resource):
         if not user:
             abort(404, {'error': 'User not found'})
 
+        context = Context(args.__dict__)
+
+        personalizer_config = {
+            "user_id": user.user_id,
+            "user_ratings_count": 0
+        }
+
+        personalizer = Personalizer(user=personalizer_config)
+
+        rec = Recommender(context=context, personalizer=personalizer)
+
         if preprocess.data.is_user_in_filter(user.user_id):
-            resp = get_recipes_with_configuration(preprocess.data.recipes, user.user_id, (
-                    preprocess.data.user_interactions['user_id'] == user.user_id).sum(),
-                                                  colab_filter=preprocess.data.recipe_colab_filter,
-                                                  calories=args['calories'], daily=user.goal_daily_calories,
-                                                  fat=args['fat'], sat_fat=args['sat fat'],
-                                                  sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
-                                                  carbs=args['carbs'], tags=args['tags'])
+            personalizer['user_ratings_count'] = preprocess.data.user_interactions['user_id'] == user.user_id.sum()
+            resp = rec.get_recipes_with_configuration(preprocess.data.recipes,
+                                                      colab_filter=preprocess.data.recipe_colab_filter)
         else:
-            resp = get_recipes_with_configuration(preprocess.data.recipes, user.user_id, 0, colab_filter=None,
-                                                  calories=args['calories'], daily=user.goal_daily_calories,
-                                                  fat=args['fat'], sat_fat=args['sat fat'],
-                                                  sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
-                                                  carbs=args['carbs'], tags=args['tags'])
+            resp = rec.get_recipes_with_configuration(preprocess.data.recipes, colab_filter=None)
         return resp[:5].to_dict()
 
     def put(self):

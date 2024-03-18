@@ -1,6 +1,8 @@
 from flask_restful import Resource, reqparse
 from flask import abort
 from app.db.models import User as DBUsers, ExerciseRating as DBExerciseRatings, db
+from model.contextualization.context import Context
+from model.personalization.personalization import Personalizer
 from model.preprocessing import preprocess
 from model.recommendation.recommend import Recommender
 
@@ -12,7 +14,6 @@ get_parser.add_argument("body_part", type=str, help="Enter the main body part th
                         location='args')
 get_parser.add_argument("equipment", type=str, help="Enter the equipment used in the exercise", location='args')
 get_parser.add_argument("level", type=str, help="Enter the difficulty level", location='args')
-
 
 # Parser for PUT requests
 put_parser = reqparse.RequestParser()
@@ -31,6 +32,7 @@ class Exercise(Resource):
         get(self): Retrieves exercise recommendations based on user preferences.
         put(self): Records user ratings for exercises.
     """
+
     def get(self):
         """
         Retrieves exercise recommendations based on user preferences.
@@ -41,15 +43,21 @@ class Exercise(Resource):
         args = get_parser.parse_args()
         user = DBUsers.query.filter_by(username=args['username']).first()
 
+        context_config = {
+            'type': args['type'],
+            'body_part': args['body_part'],
+            'equipment': args['equipment'],
+            'level': args['level']
+        }
+        context = Context(context=context_config)
+        personalization = Personalizer(user)
+        rec = Recommender(context=context, personalizer=personalization)
         if not user:
             abort(404, {'error': 'User not found'})
 
-        resp = Recommender().get_exercise_with_configuration(exercises=preprocess.data.exercises,
-                                                             colab_filter=preprocess.data.exercise_colab_filter,
-                                                             type=args['type'],
-                                                             body_part=args['body_part'],
-                                                             equipment=args['equipment'],
-                                                             level=args['level'])
+        resp = rec.get_exercise_with_configuration(exercises=preprocess.data.exercises,
+                                                   colab_filter=preprocess.data.exercise_colab_filter,
+                                                   )
 
         # return resp[:5].to_dict()
         return {}, 200

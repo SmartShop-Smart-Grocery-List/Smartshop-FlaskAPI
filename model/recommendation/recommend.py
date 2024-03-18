@@ -1,5 +1,9 @@
 import pandas as pd
 import numpy as np
+from flask import current_app as app
+from app.db.models import db
+from model.contextualization.context import Context
+from model.personalization.personalization import Personalizer
 
 
 class Recommender:
@@ -24,7 +28,7 @@ class Recommender:
         get_recommendation(self, context, personalization): Generates recommendation based on context and personalization.
     """
 
-    def __init__(self,  weight=(0.75, 0.25)):
+    def __init__(self, context, personalizer, weight=(0.75, 0.25)):
         """
         Initializes the Recommender object.
 
@@ -34,7 +38,25 @@ class Recommender:
         self.DVP_HIGH = 40.0
         self.DVP_MED = 25.0
         self.DVP_LOW = 10.0
+
+        self.context = context
+        self.personalizer = personalizer
+
+        if self.context:
+            self.context.add_context('body_part', None)
+            self.context.add_context('equipment', None)
+            self.context.add_context('level', None)
+            self.context.add_context('daily', 2000)
+            self.context.add_context('fat', "NULL")
+            self.context.add_context('sat_fat', "NULL")
+            self.context.add_context('sugar', "NULL")
+            self.context.add_context('protein', "NULL")
+            self.context.add_context('carbs', "NULL")
+            self.context.add_context('sodium', "NULL")
+            self.context.add_context('tags', [])
+
         self.context_weight, self.rec_weight = weight
+
 
     def sigmoid(self, x, k=1, x0=0):
         """
@@ -95,9 +117,7 @@ class Recommender:
         weighted_prediction = (bayesian_avg * (1 - colab_weight)) + (colab_prediction * colab_weight)
         return weighted_prediction
 
-    def get_exercise_with_configuration(self, exercises, user_id, user_ratings_count, colab_filter=None, type=None,
-                                        body_part=None,
-                                        equipment=None, level=None):
+    def get_exercise_with_configuration(self, exercises, colab_filter=None):
         """
         Retrieves exercises with specified configuration.
 
@@ -114,6 +134,15 @@ class Recommender:
         Returns:
             DataFrame: DataFrame containing exercises that match the specified configuration.
         """
+
+        user_id = self.personalizer.user_id
+        user_ratings_count = self.personalizer.user_ratings_count
+
+        type = self.context['type']
+        body_part = self.context['body_part']
+        equipment = self.context['equipment']
+        level = self.context['level']
+
 
         conditions = []
         if not (type is None):
@@ -145,11 +174,7 @@ class Recommender:
 
             return exercises
 
-    def get_recipes_with_configuration(self, recipes, user_id, user_ratings_count, colab_filter=None, calories=None,
-                                       daily=2000,
-                                       fat="NULL", sat_fat="NULL", sugar="NULL", sodium="NULL", protein="NULL",
-                                       carbs="NULL",
-                                       tags=[]):
+    def get_recipes_with_configuration(self, recipes, colab_filter=None):
         """
         Retrieves recipes with specified configuration.
 
@@ -171,6 +196,20 @@ class Recommender:
         Returns:
             DataFrame: DataFrame containing recipes that match the specified configuration.
         """
+
+        user_id = self.personalizer.user_id
+        user_ratings_count = self.personalizer.user_ratings_count
+
+        calories = self.context['calories']
+        daily = self.context['daily']
+        fat = self.context['fat']
+        sat_fat = self.context['sat_fat']
+        sugar = self.context['sugar']
+        protein = self.context['protein']
+        sodium = self.context['sodium']
+        carbs = self.context['carbs']
+        tags = self.context['tags']
+
         high_calorie_lim = float("inf")
         low_calorie_lim = 0
 
@@ -254,10 +293,10 @@ class Recommender:
             float: Basal Metabolic Rate (BMR) in calories per day.
         """
         if gender == 'm':
-            return 66.473 + 13.7516 * weight + 5.0033 * height - 6.755 * age
+            return 66.473 + 13.7516 * float(weight) + 5.0033 * float(height) - 6.755 * float(age)
         else:
-            return 655.0955 + 9.5634 * weight + 1.8496 * height - 4.6756 * age
-    def get_lifestyle_score(self, personalization):
+            return 655.0955 + 9.5634 * float(weight) + 1.8496 * float(height) - 4.6756 * float(age)
+    def get_lifestyle_score(self):
         """
         Calculates lifestyle score.
 
@@ -267,8 +306,12 @@ class Recommender:
         Returns:
             dict: Dictionary containing lifestyle scores.
         """
-        user_data = personalization
-
+        df = pd.read_csv('model/data/health_data.csv', header=None)
+        df.columns = ['user_id', 'date', 'distance', 'steps', 'sleep', 'calories', 'restingHeartRate', 'maxHeartRate']
+        df.to_sql(name='fitbit_data', con=app.config["SQLALCHEMY_DATABASE_URI"], if_exists='append', index=False)
+        db.session.commit()
+        print(self.personalizer.preferences)
+        user_data = self.personalizer.preferences
 
         age = user_data['age']
         height = user_data['height'] #cm
@@ -284,10 +327,9 @@ class Recommender:
         ideal_bmr = self.get_bmr(gender, height, weight_goal, age) * self.activity_coefficient(goal_activity)
 
 
-
         wellness_score = round(5 - (abs(ideal_bmr - current_bmr))/ideal_bmr * 5,2)
 
-        fitness = personalization.fit_data
+        fitness = self.personalizer.fit_data
 
         average_sleep = sum([fit.sleep for fit in fitness])/len(fitness)
         average_calories = sum([fit.calories for fit in fitness])/len(fitness)

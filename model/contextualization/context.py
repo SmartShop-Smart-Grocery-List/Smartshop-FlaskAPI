@@ -5,12 +5,9 @@ class Context:
         else:
             self.context = dict()
 
-
-    def add_context(self, key, context, context_dict):
-        if context_dict:
-            self.context = self.context.update(context_dict)
-
-        self.context[key] = context
+    def add_context(self, key, context):
+        if not self.context[key]:
+            self.context[key] = context
 
     def contextualize(self, key, information):
         """

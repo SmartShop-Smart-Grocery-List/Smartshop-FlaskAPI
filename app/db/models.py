@@ -59,7 +59,8 @@ class FitBit(db.Model):
         maxHeartRate (str): The maximum heart rate.
     """
     __tablename__ = 'fitbit_data'
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'), primary_key=True, nullable=False)
+    fitbit_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'), nullable=False)
     date = Column(Text)
     distance = Column(Text)
     steps = Column(Text)
