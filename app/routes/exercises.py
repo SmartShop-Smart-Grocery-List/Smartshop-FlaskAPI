@@ -1,6 +1,8 @@
 from flask_restful import Resource, reqparse
 from flask import abort
 from app.db.models import User as DBUsers, ExerciseRating as DBExerciseRatings, db
+from model.preprocessing import preprocess
+from model.recommendation.recommend import Recommender
 
 get_parser = reqparse.RequestParser()
 get_parser.add_argument("username", type=str, help="Enter Username", location='args', required=True)
@@ -26,11 +28,12 @@ class Exercise(Resource):
         if not user:
             abort(404, {'error': 'User not found'})
 
-        # resp = getExerciseWithConfiguration(data_management.data.exercises, data_management.data.exercise_colab_filter,
-        #                                    calories=args['calories'], daily=user.goal_daily_calories,
-        #                                    fat=args['fat'], sat_fat=args['sat fat'],
-        #                                    sugar=args['sugar'], sodium=args['sodium'], protein=args['protein'],
-        #                                    carbs=args['carbs'], tags=args['tags'])
+        resp = Recommender().get_exercise_with_configuration(exercises=preprocess.data.exercises,
+                                                             colab_filter=preprocess.data.exercise_colab_filter,
+                                                             type=args['type'],
+                                                             body_part=args['body_part'],
+                                                             equipment=args['equipment'],
+                                                             level=args['level'])
 
         # return resp[:5].to_dict()
         return {}, 200

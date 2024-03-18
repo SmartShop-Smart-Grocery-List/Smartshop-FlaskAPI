@@ -1,9 +1,9 @@
 class Personalizer:
-    def __init__(self, personality):
-        self.preferences = {}
+    def __init__(self, personality, fit_data):
+        self.preferences = personality
+        self.fit_data = fit_data
 
     def add_preference(self, category, preference):
-
         if category in self.preferences:
             self.preferences[category].append(preference)
         else:

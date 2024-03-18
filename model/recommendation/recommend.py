@@ -1,22 +1,13 @@
 import pandas as pd
 import numpy as np
 
+
 class Recommender:
-    def __init__(self, context, personalization, weight):
+    def __init__(self,  weight=(0.75, 0.25)):
         self.DVP_HIGH = 40.0
         self.DVP_MED = 25.0
         self.DVP_LOW = 10.0
-
-        self.context = context
-        self.personalization = personalization
-
-        if weight and len(weight) == 2:
-            self.contextual_weight = weight[0]
-            self.personalized_weight = weight[1]
-        else:
-            self.contextual_weight = 0.75
-            self.personalized_weight = 0.25
-
+        self.context_weight, self.rec_weight = weight
 
     def sigmoid(self, x, k=1, x0=0):
         return 1 / (1 + np.exp(-k * (x - x0)))
@@ -34,25 +25,52 @@ class Recommender:
                 high = self.DVP_MED * multiplier
         return low, high
 
-
     def calculate_weighted_prediction(self, bayesian_avg, colab_prediction, count_items_rated):
         max_colab_weight = 0.95
         min_colab_weight = 0.2
         max_count = 100
 
         colab_weight = min_colab_weight + (max_colab_weight - min_colab_weight) * self.sigmoid(count_items_rated, k=0.1,
-                                                                                          x0=max_count / 2)
+                                                                                               x0=max_count / 2)
 
         weighted_prediction = (bayesian_avg * (1 - colab_weight)) + (colab_prediction * colab_weight)
         return weighted_prediction
 
-
     def get_exercise_with_configuration(self, exercises, user_id, user_ratings_count, colab_filter=None, type=None,
                                         body_part=None,
                                         equipment=None, level=None):
-        raise NotImplementedError
+            conditions = []
+            if not (type is None):
+                conditions.append(f"Type == '{type}'")
+            if not (body_part is None):
+                conditions.append(f"BodyPart == '{body_part}'")
+            if not (equipment is None):
+                conditions.append(f"Equipment == '{equipment}'")
+            if not (level is None):
+                conditions.append(f"Level == '{level}'")
 
+            query_string = " and ".join(conditions)
 
+            if query_string:
+                exercises_found = exercises.query(query_string).sort_values(by='Rating', ascending=False)
+                if exercises_found:
+                    if colab_filter:
+                        exercise_ids = exercises_found['id'].tolist()
+                        weighted_predictions = []
+                        for exercise_id in exercise_ids:
+                            colab_prediction = colab_filter.predict(user_id, exercise_id)
+                            weighted_predictions.append(
+                                (exercise_id, self.calculate_weighted_prediction(colab_prediction, user_ratings_count)))
+                        weighted_predictions = sorted(weighted_predictions, key=lambda x: x[1], reverse=True)
+                        sorted_exercise_ids = [pred[0] for pred in weighted_predictions]
+                        exercises_found = exercises_found.reindex(sorted_exercise_ids)
+
+                    return exercises_found
+
+            return exercises
+
+    def get_fit_with_configuration(self) -> None:
+        pass
 
     def get_recipes_with_configuration(self, recipes, user_id, user_ratings_count, colab_filter=None, calories=None,
                                        daily=2000,
@@ -82,7 +100,7 @@ class Recommender:
                           (low_sugar_lim <= recipes['sugar (PDV)']) & (recipes['sugar (PDV)'] <= high_sugar_lim) &
                           (low_sodium_lim <= recipes['sodium (PDV)']) & (recipes['sodium (PDV)'] <= high_sodium_lim) &
                           (low_protein_lim <= recipes['protein (PDV)']) & (
-                                      recipes['protein (PDV)'] <= high_protein_lim) &
+                                  recipes['protein (PDV)'] <= high_protein_lim) &
                           (low_carbs_lim <= recipes['carbohydrates (PDV)']) & (
                                   recipes['carbohydrates (PDV)'] <= high_carbs_lim))
 
@@ -114,16 +132,11 @@ class Recommender:
 
         return recipes_found_sorted
 
-    def get_recommendation(self, context=None, personalization=None):
-        if context:
-            ctx = context
-        else:
-            ctx = self.context
+    def get_recommendation(self, context, personalization):
 
-        if personalization:
-            pers = personalization
-        else:
-            pers = self.personalization
-
-
-
+        return {
+            "wellness_score": 1,
+            "diet_score": 1,
+            "fitness_score": 1,
+            "lifestyle_score": 1
+        }
